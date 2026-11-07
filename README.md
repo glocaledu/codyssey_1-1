@@ -767,7 +767,6 @@ Docker Volume은 컨테이너와 독립적으로 관리되므로 컨테이너를
 ```bash
 git config --list
 ```
-햣
 사용자 정보와 기본 브랜치 설정 상태를 확인한다.
 
 ### Git 저장소 생성 및 커밋
@@ -787,13 +786,15 @@ git remote -v
 
 GitHub 저장소를 연결하고 push한 결과를 기록한다.
 
+![GitHub 저장소 상태 확인](screenshots/07-git-status.png)
+
 **GitHub Repository**
 
 https://github.com/glocaledu/codyssey_1-1
 
 [본인 GitHub 저장소 URL]
 
-![GitHub 연동](screenshots/07-github.png)
+![GitHub 연동](screenshots/08-github-repository.png)
 
 ---
 
