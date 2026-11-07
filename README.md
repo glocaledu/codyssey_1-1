@@ -695,8 +695,8 @@ My first Docker web server!
 #2 Hello Codyssey!
 I am learning how to use Docker!
    
-![Bind Mount](screenshots/05-bind-mount1.png)
-![Bind Mount](screenshots/05-bind-mount2.png)
+![Bind Mount](screenshots/05-bind-mount_1.png)
+![Bind Mount](screenshots/05-bind-mount_2.png)
 
 ---
 
