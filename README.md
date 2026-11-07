@@ -494,7 +494,9 @@ hello-world:latest   c567b231f656       25.9kB         9.49kB    U
 ubuntu:latest        6a06111c3b0a        163MB         45.9MB    U
 # docker
 
-![Docker 실습](screenshots/03-docker.png)
+![Docker 실습](screenshots/03-docker_1.png)
+![Docker 실습](screenshots/03-docker_2.png)
+![Docker 실습](screenshots/03-docker_3.png)
 
 ### 학습한 내용
 
