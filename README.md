@@ -1,8 +1,8 @@
-# Codyssey 입학연수 미션1 — 내 컴퓨터에 개발자용 '작업실' 꾸미기
+# Codyssey 미션1 — 내 컴퓨터에 개발자용 '작업실' 꾸미기
 
 ## 0) 프로젝트 개요
-터미널(CLI) · Docker · Git/GitHub 를 직접 손으로 세팅하고, **"내 PC에서만 되는 코드"가 아니라 누구나 같은 방식으로 실행·검증할 수 있는 환경**을 만드는 미션입니다.
-이 저장소에는 (1) 터미널 조작 로그, (2) 권한 실습, (3) 직접 작성한 Dockerfile + 웹 서버 소스, (4) 포트 매핑 · 바인드 마운트 · 볼륨 영속성 검증 로그, (5) Git 설정 기록을 모두 담았습니다.
+1. 터미널(CLI) · Docker · Git/GitHub 를 직접 세팅하고, **"내 PC에서만 되는 코드"가 아니라 누구나 같은 방식으로 실행·검증할 수 있는 환경**을 만드는 미션
+2. 이 저장소에는 (1) 터미널 조작 로그, (2) 권한 실습, (3) 직접 작성한 Dockerfile + 웹 서버 소스, (4) 포트 매핑 · 바인드 마운트 · 볼륨 영속성 검증 로그, (5) Git 설정 기록을 모두 담았습니다.
 
 > ⚠️ **먼저 밝히는 수행 범위 (정직한 기록)**
 > 이번 수행은 **Docker Hub / GitHub 등 외부 네트워크가 차단된 격리 리눅스 환경**에서 진행했습니다.
@@ -16,18 +16,17 @@
 ## 1) 실행 환경
 | 항목 | 값 |
 |---|---|
-| OS | Ubuntu 24.04.5 LTS (x86_64) |
-| Shell | GNU bash 5.2.21 |
-| Docker | Docker Engine 29.9.2 (Compose v5.7.0 포함) |
-| Git | 2.43.0 |
-| 터미널 | 샌드박스 bash (CLI 전용) |
+| OS | Windows + WSL2 (Ubuntu 24.04.1 LTS (x86_64)) |
+| Shell | GNU bash 5.3.9 |
+| Docker | Docker Desktop (WSL2 Engine), Docker 29.8.0 (Compose v5.5.1 포함) |
+| Git | 2.53.0 |
+| 터미널 | Windows Terminal + WSL2 Ubuntu |
 
 ```text
-Docker version 29.9.2, build a82e528
-git version 2.43.0
+Docker version 29.8.0, build 88096ef
+git version 2.53.0
 ```
 
-> **재현 시 주의 (PC 의존 사항)**: 서울 캠퍼스처럼 `sudo`가 제한된 환경에서는 OrbStack 사용을 권장합니다(과제 안내). 본 수행은 root 권한 환경이라 Docker 데몬을 `dockerd &` 로 직접 띄웠습니다. 일반 PC에서는 Docker Desktop/OrbStack 실행으로 대체하세요.
 
 ## 2) 수행 체크리스트
 - [x] 터미널 기본 조작 (pwd / ls -la 숨김파일 / mkdir / cd / cp / mv / rm / cat / touch)
@@ -47,55 +46,55 @@ git version 2.43.0
 - [x] 민감정보(토큰·비밀번호) 미포함 확인
 
 ## 3) 터미널 조작 · 권한 실습 로그
-홈 디렉토리 아래 `~/codyssey/practice` 에서 실습했습니다. (`HOME=/root`)
+홈 디렉토리 아래 `~/projects/myapp/codyssey_1-1/` 에서 실습했습니다. (`HOME=/home/daniel`)
 
 ```bash
 $ pwd
-/home/claude/codyssey-mission1
-$ mkdir -p ~/codyssey/practice/docs && cd ~/codyssey/practice
+/home/daniel
+$ mkdir -p practice/docs && cd practice/
 $ touch empty.txt .hidden_file
 $ echo "hello codyssey" > docs/note.txt
 $ ls -la
 total 12
-drwxr-xr-x 3 root root 4096 Nov  9 16:10 .
-drwxr-xr-x 3 root root 4096 Nov  9 16:10 ..
--rw-r--r-- 1 root root    0 Nov  9 16:10 .hidden_file
-drwxr-xr-x 2 root root 4096 Nov  9 16:10 docs
--rw-r--r-- 1 root root    0 Nov  9 16:10 empty.txt
+drwxr-xr-x 3 daniel daniel 4096 Nov  9 16:54 .
+drwxr-xr-x 5 daniel daniel 4096 Nov  9 16:51 ..
+-rw-r--r-- 1 daniel daniel    0 Nov  9 16:54 .hidden_file
+drwxr-xr-x 2 daniel daniel 4096 Nov  9 16:54 docs
+-rw-r--r-- 1 daniel daniel    0 Nov  9 16:54 empty.txt
 $ cat docs/note.txt
 hello codyssey
 $ cp docs/note.txt docs/note_copy.txt
 $ mv docs/note_copy.txt docs/renamed.txt
 $ ls -la docs
 total 16
-drwxr-xr-x 2 root root 4096 Nov  9 16:10 .
-drwxr-xr-x 3 root root 4096 Nov  9 16:10 ..
--rw-r--r-- 1 root root   15 Nov  9 16:10 note.txt
--rw-r--r-- 1 root root   15 Nov  9 16:10 renamed.txt
+drwxr-xr-x 2 daniel daniel 4096 Nov  9 16:55 .
+drwxr-xr-x 3 daniel daniel 4096 Nov  9 16:54 ..
+-rw-r--r-- 1 daniel daniel   15 Nov  9 16:54 note.txt
+-rw-r--r-- 1 daniel daniel   15 Nov  9 16:55 renamed.txt
 $ rm docs/renamed.txt && ls docs
 note.txt
 --- 절대경로 vs 상대경로
-$ cd docs && pwd && cat /root/codyssey/practice/docs/note.txt && cat note.txt && cat ../docs/note.txt
-/root/codyssey/practice/docs
+$ cd docs && pwd && cat /home/daniel/projects/myapp/codyssey_1-1/practice/docs/note.txt && cat note.txt && cat ../docs/note.txt
+/home/daniel/projects/myapp/codyssey_1-1/practice/docs
 hello codyssey
 hello codyssey
 hello codyssey
 --- 권한 실습 (파일)
 $ ls -l docs/note.txt
--rw-r--r-- 1 root root 15 Nov  9 16:10 docs/note.txt
+-rw-r--r-- 1 daniel daniel 15 Nov  9 16:54 docs/note.txt
 $ chmod 600 docs/note.txt && ls -l docs/note.txt
--rw------- 1 root root 15 Nov  9 16:10 docs/note.txt
+-rw------- 1 daniel daniel 15 Nov  9 16:54 docs/note.txt
 $ chmod 755 docs/note.txt && ls -l docs/note.txt
--rwxr-xr-x 1 root root 15 Nov  9 16:10 docs/note.txt
+-rwxr-xr-x 1 daniel daniel 15 Nov  9 16:54 docs/note.txt
 $ chmod 644 docs/note.txt && ls -l docs/note.txt
--rw-r--r-- 1 root root 15 Nov  9 16:10 docs/note.txt
+-rw-r--r-- 1 daniel daniel 15 Nov  9 16:54 docs/note.txt
 --- 권한 실습 (디렉토리)
 $ ls -ld docs
-drwxr-xr-x 2 root root 4096 Nov  9 16:10 docs
+drwxr-xr-x 2 daniel daniel 4096 Nov  9 16:56 docs
 $ chmod 700 docs && ls -ld docs
-drwx------ 2 root root 4096 Nov  9 16:10 docs
+drwx------ 2 daniel daniel 4096 Nov  9 16:56 docs
 $ chmod 755 docs && ls -ld docs
-drwxr-xr-x 2 root root 4096 Nov  9 16:10 docs
+drwxr-xr-x 2 daniel daniel 4096 Nov  9 16:56 docs
 ```
 
 **관찰 정리**
@@ -109,30 +108,69 @@ drwxr-xr-x 2 root root 4096 Nov  9 16:10 docs
 처음에는 데몬이 꺼져 있어 `docker info` 의 Server 항목이 에러였고, `dockerd` 를 띄운 뒤 정상 확인했습니다. (5-1 참고)
 
 ```text
-Client: Docker Engine - Community
- Version:    29.9.2
+Client:
+ Version:    29.8.0
  Context:    default
  Debug Mode: false
  Plugins:
+  agent: Docker AI Agent Runner (Docker Inc.)
+    Version:  v1.136.0
+    Path:     /usr/local/lib/docker/cli-plugins/docker-agent
+  ai: Docker AI Agent - Ask Gordon (Docker Inc.)
+    Version:  v1.31.0
+    Path:     /usr/local/lib/docker/cli-plugins/docker-ai
   buildx: Docker Buildx (Docker Inc.)
-    Version:  v0.38.1
-    Path:     /usr/libexec/docker/cli-plugins/docker-buildx
+    Version:  v0.37.0
+    Path:     /usr/local/lib/docker/cli-plugins/docker-buildx
   compose: Docker Compose (Docker Inc.)
-    Version:  v5.7.0
-    Path:     /usr/libexec/docker/cli-plugins/docker-compose
+    Version:  v5.5.1
+    Path:     /usr/local/lib/docker/cli-plugins/docker-compose
+  debug: Get a shell into any image or container (Docker Inc.)
+    Version:  0.0.47
+    Path:     /usr/local/lib/docker/cli-plugins/docker-debug
+  desktop: Docker Desktop commands (Docker Inc.)
+    Version:  v0.4.4
+    Path:     /usr/local/lib/docker/cli-plugins/docker-desktop
+  dhi: CLI for managing Docker Hardened Images (Docker Inc.)
+    Version:  v0.0.7
+    Path:     /usr/local/lib/docker/cli-plugins/docker-dhi
+  extension: Manages Docker extensions (Docker Inc.)
+    Version:  v0.2.31
+    Path:     /usr/local/lib/docker/cli-plugins/docker-extension
+  init: Creates Docker-related starter files for your project (Docker Inc.)
+    Version:  v1.4.0
+    Path:     /usr/local/lib/docker/cli-plugins/docker-init
+  mcp: Docker MCP Plugin (Docker Inc.)
+    Version:  v0.43.3
+    Path:     /usr/local/lib/docker/cli-plugins/docker-mcp
+  model: Docker Model Runner (Docker Inc.)
+    Version:  v1.2.6
+    Path:     /usr/local/lib/docker/cli-plugins/docker-model
+  offload: Docker Offload (Docker Inc.)
+    Version:  v0.6.17
+    Path:     /usr/local/lib/docker/cli-plugins/docker-offload
+  pass: Docker Pass Secrets Manager Plugin (beta) (Docker Inc.)
+    Version:  v0.2.2
+    Path:     /usr/local/lib/docker/cli-plugins/docker-pass
+  sandbox: "docker sandbox" is deprecated, use Docker Sandboxes instead (Docker Inc.)
+    Version:  v0.13.0
+    Path:     /usr/local/lib/docker/cli-plugins/docker-sandbox
+  scout: Docker Scout (Docker Inc.)
+    Version:  v1.24.0
+    Path:     /usr/local/lib/docker/cli-plugins/docker-scout
 
 Server:
  Containers: 3
-  Running: 2
+  Running: 1
   Paused: 0
-  Stopped: 1
- Images: 2
- Server Version: 29.9.2
+  Stopped: 2
+ Images: 3
+ Server Version: 29.8.0
  Storage Driver: overlayfs
   driver-type: io.containerd.snapshotter.v1
  Logging Driver: json-file
  Cgroup Driver: cgroupfs
- Cgroup Version: 1
+ Cgroup Version: 2
  Plugins:
   Volume: local
   Network: bridge host ipvlan macvlan null overlay
@@ -140,79 +178,172 @@ Server:
  CDI spec directories:
   /etc/cdi
   /var/run/cdi
+ Discovered Devices:
+  cdi: docker.com/gpu=webgpu
  Swarm: inactive
- Runtimes: io.containerd.runc.v2 runc
+ Runtimes: io.containerd.runc.v2 nvidia runc
  Default Runtime: runc
  Init Binary: docker-init
- containerd version: b7a25261e029d68978bbf290df0a62fc819b3c51
- runc version: v1.5.2-0-g29dd3dc2
+ containerd version: db8809540e1a7a9da5d518876894933ff55692ab
+ runc version: v1.4.3-0-gbb14dabe
  init version: de40ad0
  Security Options:
   seccomp
    Profile: builtin
- Kernel Version: 6.18.44-fc-v310
- Operating System: Ubuntu 24.04.5 LTS
+  cgroupns
+ Kernel Version: 6.18.54.1-microsoft-standard-WSL2
+ Operating System: Docker Desktop (containerized)
  OSType: linux
  Architecture: x86_64
- CPUs: 2
- Total Memory: 7.835GiB
- Name: vm
- ID: 61437e58-104a-4de6-b843-740c36e9d5f1
+ CPUs: 16
+ Total Memory: 7.721GiB
+ Name: docker-desktop
+ ID: af8a4748-fe21-4f02-8645-96b34fcc27b4
  Docker Root Dir: /var/lib/docker
  Debug Mode: false
- HTTPS Proxy: http://127.0.0.1:40279
- No Proxy: localhost,127.0.0.1,::1,127.0.0.0/8,0.0.0.0/8,::,169.254.0.0/16,api.anthropic.com,api-staging.anthropic.com,api-pr-preview.anthropic.com,mcp-proxy.anthropic.com,mcp-proxy-staging.anthropic.com,registry.npmjs.org,jsr.io,npm.jsr.io,pypi.org,files.pythonhosted.org,index.crates.io,proxy.golang.org,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,.svc.cluster.local,*.svc.cluster.local
+ HTTP Proxy: http.docker.internal:3128
+ HTTPS Proxy: http.docker.internal:3128
+ No Proxy: hubproxy.docker.internal
+ Labels:
+  com.docker.desktop.address=unix:///var/run/docker-cli.sock
  Experimental: false
  Insecure Registries:
-  127.0.0.0/8
+  hubproxy.docker.internal:5555
   ::1/128
+  127.0.0.0/8
  Live Restore Enabled: false
  Firewall Backend: iptables
-  EnableUserlandProxy: true
-  UserlandProxyPath: /usr/bin/docker-proxy
-
-WARNING: Support for cgroup v1 is deprecated and planned to be removed by no later than May 2029 (https://github.com/moby/moby/issues/51111)
 ```
 
-### 4-2) 직접 작성한 웹 서버 · Dockerfile
-`app/server.c` (정적 C 웹 서버), `site/index.html`, `data/.keep`, `Dockerfile` 을 직접 작성했습니다.
+### 4-2) nginx 기반 커스텀 이미지 · Dockerfile
 
-**선택한 방식**: 과제의 (B) 유형에 해당 — 기존 베이스(`scratch`)에 기능을 얹은 커스텀 이미지.
-> 원래는 `nginx:alpine` 을 쓰고 싶었으나 레지스트리가 차단되어, **베이스가 가장 단순한 `scratch`** 를 택하고 호스트에서 정적 빌드한 바이너리를 넣었습니다.
+과제의 **(A) 웹 서버 베이스 이미지 활용** 방식을 선택했습니다.
+기존 `nginx:alpine` 이미지를 베이스로 하고, 정적 콘텐츠와 설정만 교체한 커스텀 이미지를 만들었습니다.
 
+**선택한 기존 베이스:** `nginx:alpine` (공식 nginx 이미지의 경량 Alpine 버전)
+
+작업 폴더 구성:
+```text
+codyssey_1-1/
+├── Dockerfile
+└── site/
+    └── index.html
+```
+
+`site/index.html`
+```html
+<h1>Codyssey Mission1</h1>
+<p>version: v1 (이미지에 포함된 기본 페이지)</p>
+```
+
+`Dockerfile`
 ```dockerfile
-# 베이스: scratch (빈 이미지). Docker Hub 접근이 막힌 환경이라 호스트에서 정적 빌드한 바이너리만 담는다.
-FROM scratch
-LABEL org.opencontainers.image.title="codyssey-mini-web"
-ENV APP_ENV=dev PORT=5000
-COPY app/server /server
-COPY site/ /www/
-# /data 디렉토리를 이미지에 만들어 둔다 (scratch에는 mkdir가 없어 COPY로 생성)
-COPY data/ /data/
-EXPOSE 5000
-ENTRYPOINT ["/server"]
+FROM nginx:alpine
+LABEL org.opencontainers.image.title="my-custom-nginx"
+ENV APP_ENV=dev
+COPY site/ /usr/share/nginx/html/
+EXPOSE 80
+HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
+  CMD wget -qO- http://localhost/ >/dev/null || exit 1
 ```
 
 | 커스텀 포인트 | 목적 |
 |---|---|
-| `FROM scratch` | OS 없이 바이너리만 담아 이미지를 1MB대로 최소화, 공격면 축소 |
-| `LABEL` | 이미지 메타데이터(이름) 표기 |
-| `ENV APP_ENV=dev PORT=5000` | 설정과 코드 분리 — 실행 시 `-e` 로 덮어쓰기 가능 |
-| `COPY app/server /server` | 직접 작성한 웹 서버 실행파일 |
-| `COPY site/ /www/` | 정적 콘텐츠 (바인드 마운트로 교체 실험 대상) |
-| `COPY data/ /data/` | 볼륨을 연결할 디렉토리 생성 (scratch는 `mkdir` 불가) |
-| `EXPOSE 5000` / `ENTRYPOINT` | 문서화용 포트 선언 / 컨테이너 시작 시 서버 실행 |
+| `FROM nginx:alpine` | 웹 서버가 이미 설치된 검증된 베이스를 재사용, Alpine이라 이미지가 작음 |
+| `LABEL` | 이미지 이름 등 메타데이터 표기 |
+| `ENV APP_ENV=dev` | 설정과 코드 분리 — 실행 시 `-e APP_ENV=...` 로 덮어쓰기 가능 |
+| `COPY site/ /usr/share/nginx/html/` | nginx 기본 페이지를 내가 만든 정적 콘텐츠로 교체 |
+| `EXPOSE 80` | 컨테이너가 사용하는 포트를 문서화 (실제 공개는 `-p` 로 결정) |
+| `HEALTHCHECK` | 컨테이너가 정상 응답하는지 Docker가 주기적으로 확인 |
 
-서버 소스 핵심 동작: `GET /` → `/www/index.html` 을 **요청마다 읽어** 응답(바인드 마운트 변경이 즉시 반영됨), `GET /hits` → `/data/hits.log` 줄 수 반환(볼륨 영속성 확인용).
-
-빌드 방법(재현): 
+빌드와 실행 (컨테이너 내부 포트는 nginx 기본인 80, 호스트 포트만 다르게 매핑):
 ```bash
-gcc -O2 -static -o app/server app/server.c   # 호스트에서 정적 빌드
 docker build -t my-web:1.0 .
+docker run -d -p 8080:80 --name my-web-8080 my-web:1.0
+docker run -d -p 8081:80 -e APP_ENV=staging --name my-web-8081 my-web:1.0
+curl -i http://localhost:8080
+curl http://localhost:8081
+docker ps
 ```
 
+<여기에 위 명령의 실제 출력을 붙여 넣으세요>
+$ docker build -t my-web:1.0 .
+[+] Building 6.7s (7/7) FINISHED                                                    docker:default
+ => [internal] load build definition from Dockerfile                                          0.0s
+ => => transferring dockerfile: 278B                                                          0.0s
+ => [internal] load metadata for docker.io/library/nginx:alpine                               2.4s
+ => [internal] load .dockerignore                                                             0.0s
+ => => transferring context: 2B                                                               0.0s
+ => [internal] load build context                                                             0.1s
+ => => transferring context: 157B                                                             0.0s
+ => [1/2] FROM docker.io/library/nginx:alpine@sha256:713fc2ebfd92e8217db451477182ee91944b123  3.5s
+ => => resolve docker.io/library/nginx:alpine@sha256:713fc2ebfd92e8217db451477182ee91944b123  0.0s
+ => => sha256:da90db506dd5f2d604467c4dc38442534f74c9e76c1982df0c262e144bad 20.55MB / 20.55MB  2.6s
+ => => sha256:69d81d5522572d5b7abcc8f594ecbc4cf9bea72402675a419e8d7b516e4c3f 1.40kB / 1.40kB  0.5s
+ => => sha256:b9c6ee6a30f8811636d7273be348906cf0e4e9725378dd54b7d4a3725538ca 1.21kB / 1.21kB  0.6s
+ => => sha256:a746bd1dc828f61bf43b775dcfecb9ded8a3d3b41789915fe135fa6b9fa85965 404B / 404B    0.6s
+ => => sha256:e011f124249bf1c4be27b3311c3b40cb90dd7737381af1c62b508020790b7bd5 965B / 965B    0.2s
+ => => sha256:c7dfd64eeb02740cc41e9f32ad7f75781882d4c167b77427aa9615d1419c4515 629B / 629B    0.2s
+ => => sha256:1abafee971b93c1ae05f03c35c6fb6e3376e75e6f16b590092a822b61ebf10 1.94MB / 1.94MB  0.6s
+ => => sha256:881fc932939efef04ca120ad44bbd2c0917851eb247aa4995428afb1e80ede 3.85MB / 3.85MB  1.3s
+ => => extracting sha256:881fc932939efef04ca120ad44bbd2c0917851eb247aa4995428afb1e80ede17     0.3s
+ => => extracting sha256:1abafee971b93c1ae05f03c35c6fb6e3376e75e6f16b590092a822b61ebf10b6     0.3s
+ => => extracting sha256:c7dfd64eeb02740cc41e9f32ad7f75781882d4c167b77427aa9615d1419c4515     0.0s
+ => => extracting sha256:e011f124249bf1c4be27b3311c3b40cb90dd7737381af1c62b508020790b7bd5     0.0s
+ => => extracting sha256:a746bd1dc828f61bf43b775dcfecb9ded8a3d3b41789915fe135fa6b9fa85965     0.0s
+ => => extracting sha256:b9c6ee6a30f8811636d7273be348906cf0e4e9725378dd54b7d4a3725538cad4     0.0s
+ => => extracting sha256:69d81d5522572d5b7abcc8f594ecbc4cf9bea72402675a419e8d7b516e4c3f14     0.0s
+ => => extracting sha256:da90db506dd5f2d604467c4dc38442534f74c9e76c1982df0c262e144bad7bc9     0.6s
+ => [2/2] COPY site/ /usr/share/nginx/html/                                                   0.2s
+ => exporting to image                                                                        0.3s
+ => => exporting layers                                                                       0.1s
+ => => exporting manifest sha256:51429c53f0b882b8458a7dd24a4d9d5425ce993f5c1db6b4c87ca5d8342  0.0s
+ => => exporting config sha256:ae8f10b9a3625496e3240986e03adc434d26bc6eba5ffdfaf5bc3b47bacd7  0.0s
+ => => exporting attestation manifest sha256:4d63cdf0f27f8ab59380bfb670b2a6749078d24ab7be606  0.0s
+ => => exporting manifest list sha256:2ce8aaaa5649c0019f2b8d8507b58fba7f3b6ceb8e214979eb97b5  0.0s
+ => => naming to docker.io/library/my-web:1.0                                                 0.0s
+ => => unpacking to docker.io/library/my-web:1.0                                              0.0s
+
+$ docker run -d -p 8080:80 --name my-web-8080 my-web:1.0
+4317ff6167bd528f598b0f94ae8b4c83929a1b572d51353799438fefa064822d
+
+$ docker run -d -p 8081:80 -e APP_ENV=staging --name my-web-8081 my-web:1.0
+e5e2a288fa5ee418a607b760b37acdcaaf627eda3eac5bd817ab122b02bc68b4
+
+$ docker ps
+CONTAINER ID   IMAGE        COMMAND                  CREATED              STATUS                        PORTS                                     NAMES
+e5e2a288fa5e   my-web:1.0   "/docker-entrypoint.…"   18 seconds ago       Up 17 seconds (healthy)       0.0.0.0:8081->80/tcp, [::]:8081->80/tcp   my-web-8081
+4317ff6167bd   my-web:1.0   "/docker-entrypoint.…"   About a minute ago   Up About a minute (healthy)   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp   my-web-8080
+
+$ curl -i http://localhost:8080
+HTTP/1.1 200 OK
+Server: nginx/1.31.8
+Date: Mon, 09 Nov 2026 08:28:55 GMT
+Content-Type: text/html
+Content-Length: 87
+Last-Modified: Mon, 09 Nov 2026 08:24:39 GMT
+Connection: keep-alive
+ETag: "6af18347-57"
+Accept-Ranges: bytes
+
+<h1>Codyssey Mission1</h1>
+
+$ curl -i http://localhost:8081
+HTTP/1.1 200 OK
+Server: nginx/1.31.8
+Date: Mon, 09 Nov 2026 08:31:15 GMT
+Content-Type: text/html
+Content-Length: 87
+Last-Modified: Mon, 09 Nov 2026 08:24:39 GMT
+Connection: keep-alive
+ETag: "6af18347-57"
+Accept-Ranges: bytes
+
+<h1>Codyssey Mission1</h1>
+<p>version: v1 (이미지에 포함된 기본 페이지)</p>
+
 ### 4-3) 빌드 · 실행 · 포트 매핑 2회 · logs · ps
-컨테이너 내부 포트는 5000 으로 같고, 호스트 포트만 8080 / 8081 로 달리 매핑했습니다. (8081 은 `-e APP_ENV=staging` 도 주입)
+컨테이너 내부 포트는 80 으로 같고, 호스트 포트만 8080 / 8081 로 달리 매핑했습니다. (8081 은 `-e APP_ENV=staging` 도 주입)
 
 ```bash
 $ docker build -t my-web:1.0 .
