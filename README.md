@@ -1,110 +1,138 @@
-# Codyssey Mission 1 — 내 컴퓨터에 개발자용 '작업실' 꾸미기
+# Codyssey 입학연수 미션1 — 내 컴퓨터에 개발자용 '작업실' 꾸미기
 
-## 1. 프로젝트 개요
+## 0) 프로젝트 개요
+터미널(CLI) · Docker · Git/GitHub 를 직접 손으로 세팅하고, **"내 PC에서만 되는 코드"가 아니라 누구나 같은 방식으로 실행·검증할 수 있는 환경**을 만드는 미션입니다.
+이 저장소에는 (1) 터미널 조작 로그, (2) 권한 실습, (3) 직접 작성한 Dockerfile + 웹 서버 소스, (4) 포트 매핑 · 바인드 마운트 · 볼륨 영속성 검증 로그, (5) Git 설정 기록을 모두 담았습니다.
 
-### 미션 목표
-
-Linux CLI, Docker, Git/GitHub를 이용하여 재현 가능한 개발환경을 구축한다.
-
-**핵심 학습 목표**
-
-- Linux 터미널을 활용한 파일 및 디렉토리 관리
-- 파일 접근 권한 이해 및 변경
-- Docker 이미지와 컨테이너의 개념 이해
-- Dockerfile을 활용한 커스텀 웹 서버 제작
-- 포트 매핑을 통한 웹 서버 접속
-- Bind Mount와 Docker Volume 실습
-- Git/GitHub 기반 코드 관리 및 협업
+> ⚠️ **먼저 밝히는 수행 범위 (정직한 기록)**
+> 이번 수행은 **Docker Hub / GitHub 등 외부 네트워크가 차단된 격리 리눅스 환경**에서 진행했습니다.
+> 그래서 아래 항목은 **수행하지 못했거나 대체 방법을 썼고**, 체크리스트와 5) 트러블슈팅에 사유를 적었습니다.
+> - `hello-world`, `ubuntu`, `nginx` 이미지 pull → `Forbidden` 으로 불가 → **대체 실습으로 진행**
+> - VSCode GitHub 로그인 / 저장소 push / SSH 키 등록 → 계정 로그인이 필요해 **미수행**
+> - 브라우저 접속 화면 스크린샷 → 브라우저가 없어 **curl 응답(과제에서 허용한 대체 증거)** 으로 제출
 
 ---
 
-## 2. 개발 환경
-
-| 항목 | 환경 |
+## 1) 실행 환경
+| 항목 | 값 |
 |---|---|
-| OS | Windows 11 Pro 64bit |
-| IDE | Visual Studio Code |
-| Shell | [Bash / PowerShell 등] |
-| Docker | version 29.9.2, build a82e528 |
-| Git | git version 2.43.0 |
-| 컨테이너 실행 환경 | [Docker Desktop / OrbStack 등] |
+| OS | Ubuntu 24.04.5 LTS (x86_64) |
+| Shell | GNU bash 5.2.21 |
+| Docker | Docker Engine 29.9.2 (Compose v5.7.0 포함) |
+| Git | 2.43.0 |
+| 터미널 | 샌드박스 bash (CLI 전용) |
 
-### 환경 확인 명령어
-
-```bash
-docker --version
-docker info
-git --version
+```text
+Docker version 29.9.2, build a82e528
+git version 2.43.0
 ```
 
-**실행 결과**
-# docker --version
-Docker version 29.9.2, build a82e528
+> **재현 시 주의 (PC 의존 사항)**: 서울 캠퍼스처럼 `sudo`가 제한된 환경에서는 OrbStack 사용을 권장합니다(과제 안내). 본 수행은 root 권한 환경이라 Docker 데몬을 `dockerd &` 로 직접 띄웠습니다. 일반 PC에서는 Docker Desktop/OrbStack 실행으로 대체하세요.
 
-# docker info
-Client:
+## 2) 수행 체크리스트
+- [x] 터미널 기본 조작 (pwd / ls -la 숨김파일 / mkdir / cd / cp / mv / rm / cat / touch)
+- [x] 절대경로 vs 상대경로 실습
+- [x] 권한 변경 실습 (파일 1개 + 디렉토리 1개, 전/후 비교)
+- [x] Docker 설치 점검 (`docker --version`, `docker info`)
+- [x] 이미지/컨테이너 운영 명령 (`images`, `ps`, `ps -a`, `logs`, `stats`, `stop`)
+- [ ] `hello-world` 이미지 실행 → **네트워크 차단으로 미수행** (대체: 로컬 `mini-linux` 컨테이너 실행)
+- [~] `ubuntu` 컨테이너 진입 → **대체**: 호스트 bash/ls로 만든 `mini-linux:local` 에서 `exec` / `run` 실습
+- [x] 직접 작성한 Dockerfile 로 커스텀 이미지 빌드/실행 (`FROM scratch` 방식)
+- [x] 포트 매핑 접속 2회 (8080, 8081)
+- [x] 바인드 마운트 반영 (호스트 수정 → 재빌드 없이 반영)
+- [x] 볼륨 영속성 (컨테이너 삭제 전/후 + 볼륨 없는 대조군)
+- [x] Git 사용자 정보 · 기본 브랜치(main) 설정, `git config --local --list` 기록
+- [ ] VSCode GitHub 로그인 / 원격 저장소 연동 / push → **미수행** (계정 인증 필요)
+- [ ] (보너스) Compose / SSH 키 → 미수행
+- [x] 민감정보(토큰·비밀번호) 미포함 확인
+
+## 3) 터미널 조작 · 권한 실습 로그
+홈 디렉토리 아래 `~/codyssey/practice` 에서 실습했습니다. (`HOME=/root`)
+
+```bash
+$ pwd
+/home/claude/codyssey-mission1
+$ mkdir -p ~/codyssey/practice/docs && cd ~/codyssey/practice
+$ touch empty.txt .hidden_file
+$ echo "hello codyssey" > docs/note.txt
+$ ls -la
+total 12
+drwxr-xr-x 3 root root 4096 Nov  9 16:10 .
+drwxr-xr-x 3 root root 4096 Nov  9 16:10 ..
+-rw-r--r-- 1 root root    0 Nov  9 16:10 .hidden_file
+drwxr-xr-x 2 root root 4096 Nov  9 16:10 docs
+-rw-r--r-- 1 root root    0 Nov  9 16:10 empty.txt
+$ cat docs/note.txt
+hello codyssey
+$ cp docs/note.txt docs/note_copy.txt
+$ mv docs/note_copy.txt docs/renamed.txt
+$ ls -la docs
+total 16
+drwxr-xr-x 2 root root 4096 Nov  9 16:10 .
+drwxr-xr-x 3 root root 4096 Nov  9 16:10 ..
+-rw-r--r-- 1 root root   15 Nov  9 16:10 note.txt
+-rw-r--r-- 1 root root   15 Nov  9 16:10 renamed.txt
+$ rm docs/renamed.txt && ls docs
+note.txt
+--- 절대경로 vs 상대경로
+$ cd docs && pwd && cat /root/codyssey/practice/docs/note.txt && cat note.txt && cat ../docs/note.txt
+/root/codyssey/practice/docs
+hello codyssey
+hello codyssey
+hello codyssey
+--- 권한 실습 (파일)
+$ ls -l docs/note.txt
+-rw-r--r-- 1 root root 15 Nov  9 16:10 docs/note.txt
+$ chmod 600 docs/note.txt && ls -l docs/note.txt
+-rw------- 1 root root 15 Nov  9 16:10 docs/note.txt
+$ chmod 755 docs/note.txt && ls -l docs/note.txt
+-rwxr-xr-x 1 root root 15 Nov  9 16:10 docs/note.txt
+$ chmod 644 docs/note.txt && ls -l docs/note.txt
+-rw-r--r-- 1 root root 15 Nov  9 16:10 docs/note.txt
+--- 권한 실습 (디렉토리)
+$ ls -ld docs
+drwxr-xr-x 2 root root 4096 Nov  9 16:10 docs
+$ chmod 700 docs && ls -ld docs
+drwx------ 2 root root 4096 Nov  9 16:10 docs
+$ chmod 755 docs && ls -ld docs
+drwxr-xr-x 2 root root 4096 Nov  9 16:10 docs
+```
+
+**관찰 정리**
+- 절대경로는 `/`(루트)부터 시작해 어디서 실행해도 같은 위치를 가리키고, 상대경로는 **현재 위치(pwd)** 기준이라 `../docs/note.txt` 처럼 위치에 따라 의미가 달라집니다.
+- 권한 `rwx = 4+2+1`. 755 = `rwxr-xr-x`(소유자 7=rwx, 그룹 5=r-x, 기타 5=r-x), 644 = `rw-r--r--`, 600 = `rw-------`.
+- 디렉토리의 `x` 는 "그 안으로 들어가고(cd) 이름으로 접근할 수 있는 권한"이라 디렉토리는 보통 755 입니다.
+
+## 4) Docker 운영 · 검증 로그
+
+### 4-1) 설치 · 데몬 점검
+처음에는 데몬이 꺼져 있어 `docker info` 의 Server 항목이 에러였고, `dockerd` 를 띄운 뒤 정상 확인했습니다. (5-1 참고)
+
+```text
+Client: Docker Engine - Community
  Version:    29.9.2
  Context:    default
  Debug Mode: false
  Plugins:
-  agent: Docker AI Agent Runner (Docker Inc.)
-    Version:  v1.152.0
-    Path:     /usr/local/lib/docker/cli-plugins/docker-agent
-  ai: Docker AI Agent - Ask Gordon (Docker Inc.)
-    Version:  v1.33.0
-    Path:     /usr/local/lib/docker/cli-plugins/docker-ai
   buildx: Docker Buildx (Docker Inc.)
     Version:  v0.38.1
-    Path:     /usr/local/lib/docker/cli-plugins/docker-buildx
+    Path:     /usr/libexec/docker/cli-plugins/docker-buildx
   compose: Docker Compose (Docker Inc.)
-    Version:  v5.6.1
-    Path:     /usr/local/lib/docker/cli-plugins/docker-compose
-  debug: Get a shell into any image or container (Docker Inc.)
-    Version:  0.49.0
-    Path:     /usr/local/lib/docker/cli-plugins/docker-debug
-  desktop: Docker Desktop commands (Docker Inc.)
-    Version:  4.98.0
-    Path:     /usr/local/lib/docker/cli-plugins/docker-desktop
-  dhi: CLI for managing Docker Hardened Images (Docker Inc.)
-    Version:  v0.0.9
-    Path:     /usr/local/lib/docker/cli-plugins/docker-dhi
-  extension: Manages Docker extensions (Docker Inc.)
-    Version:  v0.2.32
-    Path:     /usr/local/lib/docker/cli-plugins/docker-extension
-  init: Creates Docker-related starter files for your project (Docker Inc.)
-    Version:  v1.4.1
-    Path:     /usr/local/lib/docker/cli-plugins/docker-init
-  mcp: Docker MCP Plugin (Docker Inc.)
-    Version:  v0.44.2
-    Path:     /usr/local/lib/docker/cli-plugins/docker-mcp
-  model: Docker Model Runner (Docker Inc.)
-    Version:  v1.2.9
-    Path:     /usr/local/lib/docker/cli-plugins/docker-model
-  offload: Docker Offload (Docker Inc.)
-    Version:  v0.7.35
-    Path:     /usr/local/lib/docker/cli-plugins/docker-offload
-  pass: Docker Pass Secrets Manager Plugin (beta) (Docker Inc.)
-    Version:  v0.3.2
-    Path:     /usr/local/lib/docker/cli-plugins/docker-pass
-  sandbox: "docker sandbox" is deprecated, use Docker Sandboxes instead (Docker Inc.)
-    Version:  v0.13.0
-    Path:     /usr/local/lib/docker/cli-plugins/docker-sandbox
-  scout: Docker Scout (Docker Inc.)
-    Version:  v1.27.0
-    Path:     /usr/local/lib/docker/cli-plugins/docker-scout
+    Version:  v5.7.0
+    Path:     /usr/libexec/docker/cli-plugins/docker-compose
 
 Server:
- Containers: 0
-  Running: 0
+ Containers: 3
+  Running: 2
   Paused: 0
-  Stopped: 0
- Images: 0
+  Stopped: 1
+ Images: 2
  Server Version: 29.9.2
  Storage Driver: overlayfs
   driver-type: io.containerd.snapshotter.v1
- Logging Driver: local
+ Logging Driver: json-file
  Cgroup Driver: cgroupfs
- Cgroup Version: 2
+ Cgroup Version: 1
  Plugins:
   Volume: local
   Network: bridge host ipvlan macvlan null overlay
@@ -112,10 +140,8 @@ Server:
  CDI spec directories:
   /etc/cdi
   /var/run/cdi
- Discovered Devices:
-  cdi: docker.com/gpu=webgpu
  Swarm: inactive
- Runtimes: io.containerd.runc.v2 nvidia runc
+ Runtimes: io.containerd.runc.v2 runc
  Default Runtime: runc
  Init Binary: docker-init
  containerd version: b7a25261e029d68978bbf290df0a62fc819b3c51
@@ -124,967 +150,310 @@ Server:
  Security Options:
   seccomp
    Profile: builtin
-  cgroupns
- Kernel Version: 6.18.54.1-microsoft-standard-WSL2
- Operating System: Docker Desktop
+ Kernel Version: 6.18.44-fc-v310
+ Operating System: Ubuntu 24.04.5 LTS
  OSType: linux
  Architecture: x86_64
- CPUs: 24
- Total Memory: 15.25GiB
- Name: docker-desktop
- ID: e05f3195-1a12-4b79-a41a-50e6d12e759f
+ CPUs: 2
+ Total Memory: 7.835GiB
+ Name: vm
+ ID: 61437e58-104a-4de6-b843-740c36e9d5f1
  Docker Root Dir: /var/lib/docker
  Debug Mode: false
- HTTP Proxy: http.docker.internal:3128
- HTTPS Proxy: http.docker.internal:3128
- No Proxy: hubproxy.docker.internal
- Labels:
-  com.docker.desktop.address=unix:///var/run/docker-cli.sock
+ HTTPS Proxy: http://127.0.0.1:40279
+ No Proxy: localhost,127.0.0.1,::1,127.0.0.0/8,0.0.0.0/8,::,169.254.0.0/16,api.anthropic.com,api-staging.anthropic.com,api-pr-preview.anthropic.com,mcp-proxy.anthropic.com,mcp-proxy-staging.anthropic.com,registry.npmjs.org,jsr.io,npm.jsr.io,pypi.org,files.pythonhosted.org,index.crates.io,proxy.golang.org,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,.svc.cluster.local,*.svc.cluster.local
  Experimental: false
  Insecure Registries:
-  hubproxy.docker.internal:5555
   127.0.0.0/8
   ::1/128
  Live Restore Enabled: false
  Firewall Backend: iptables
+  EnableUserlandProxy: true
+  UserlandProxyPath: /usr/bin/docker-proxy
 
- # git --version
-git version 2.43.0
----
-
-## 3. 프로젝트 구조
-
-```text
-codyssey-workstation/
-├── README.md
-├── Dockerfile
-├── .gitignore
-├── site/
-│   └── index.html
-├── screenshots/
-└── logs/
+WARNING: Support for cgroup v1 is deprecated and planned to be removed by no later than May 2029 (https://github.com/moby/moby/issues/51111)
 ```
 
----
-
-## 4. 수행 체크리스트
-
-- [ ] Linux CLI 기본 명령 실습
-- [ ] 파일 및 디렉토리 권한 변경
-- [ ] Docker 설치 및 엔진 점검
-- [ ] hello-world 실행
-- [ ] Ubuntu 컨테이너 실행
-- [ ] Docker 운영 명령어 실습
-- [ ] Dockerfile 작성 및 커스텀 이미지 빌드
-- [ ] 포트 매핑 및 웹 서버 접속
-- [ ] Bind Mount 변경 반영 검증
-- [ ] Docker Volume 영속성 검증
-- [ ] Git 설정 및 GitHub 연동
-- [ ] 트러블슈팅 2건 이상 기록
-
----
-
-## 5. Linux CLI 기본 실습
-
-### 실습 목적
-
-터미널에서 파일과 디렉토리를 직접 생성·이동·관리한다.
-
-### 실습 명령어
-
-```bash
-pwd
-ls -la
-mkdir practice
-cd practice
-touch hello.txt
-echo "Hello Codyssey" > hello.txt
-cat hello.txt
-cp hello.txt copy.txt
-mv copy.txt renamed.txt
-rm renamed.txt
-cd ..
-```
-
-### 실습 결과
-
-# pwd
-/
-# mkdir practice
-# ls
-Docker  bin.usr-is-merged  dev  home  lib                lib64       media  opt       proc  run   sbin.usr-is-merged  srv  tmp  var
-bin     boot               etc  init  lib.usr-is-merged  lost+found  mnt    practice  root  sbin  snap                sys  usr
-# ls -la
-total 3492
-drwxr-xr-x  25 root root    4096 Nov  5 15:50 .
-drwxr-xr-x  25 root root    4096 Nov  5 15:50 ..
-drwxr-xr-x   3 root root    4096 Nov  5 15:45 .docker
--rw-r--r--   1 root root       0 Nov  5 15:43 .motd_shown
-drwxr-xr-x   3 root root    4096 Nov  5 15:27 Docker
-lrwxrwxrwx   1 root root       7 Apr 22  2024 bin -> usr/bin
-drwxr-xr-x   2 root root    4096 Feb 26  2024 bin.usr-is-merged
-drwxr-xr-x   2 root root    4096 Apr 22  2024 boot
-drwxr-xr-x  15 root root    3920 Nov  5 15:34 dev
-drwxr-xr-x  91 root root    4096 Nov  5 15:43 etc
-drwxr-xr-x   3 root root    4096 Nov  5 15:43 home
--rwxr-xr-x   1 root root 3476152 Oct  8 06:21 init
-lrwxrwxrwx   1 root root       7 Apr 22  2024 lib -> usr/lib
-drwxr-xr-x   2 root root    4096 Apr  8  2024 lib.usr-is-merged
-lrwxrwxrwx   1 root root       9 Apr 22  2024 lib64 -> usr/lib64
-drwx------   2 root root   16384 Nov  5 15:20 lost+found
-drwxr-xr-x   2 root root    4096 Sep  8 09:13 media
-drwxr-xr-x   6 root root    4096 Nov  5 15:20 mnt
-drwxr-xr-x   2 root root    4096 Sep  8 09:13 opt
-drwxr-xr-x   2 root root    4096 Nov  5 15:50 practice
-dr-xr-xr-x 326 root root       0 Nov  5 15:33 proc
-drwx------   5 root root    4096 Nov  5 15:27 root
-drwxr-xr-x  22 root root     720 Nov  5 15:43 run
-lrwxrwxrwx   1 root root       8 Apr 22  2024 sbin -> usr/sbin
-drwxr-xr-x   2 root root    4096 Mar 31  2024 sbin.usr-is-merged
-drwxr-xr-x   2 root root    4096 Nov  5 15:20 snap
-drwxr-xr-x   2 root root    4096 Sep  8 09:13 srv
-dr-xr-xr-x  12 root root       0 Nov  5 15:49 sys
-drwxrwxrwt   8 root root    4096 Nov  5 15:44 tmp
-drwxr-xr-x  12 root root    4096 Sep  8 09:13 usr
-drwxr-xr-x  13 root root    4096 Nov  5 15:20 var
-
-# cd practice
-# pwd
-/practice
-# touch hello.txt
-# ls hello.*
-hello.txt
-# echo "Hello Codyssey" > hello.txt
-# cat hello.txt
-Hello Codyssey
-# cp hello.txt copy.txt
-# ls copy.*
-copy.txt
-# cat copy.txt
-Hello Codyssey
-# mv copy.txt renamed.txt
-# ls renamed.*
-renamed.txt
-# rm renamed.txt
-# ls
-hello.txt
-# cp hello.txt copy.txt
-# ls
-copy.txt  hello.txt
-# rm copy.txt && ls
-hello.txt
-# cd ..
-# pwd
-/
-
-
-**증거자료**
-
-![CLI 실습](screenshots/01-cli.png)
-
-### 학습한 내용
-
-- `pwd`: 현재 작업 디렉토리 확인
-- `ls -la`: 숨김 파일을 포함한 상세 목록 확인
-- `mkdir`: 디렉토리 생성
-- `cd`: 디렉토리 이동
-- `touch`: 빈 파일 생성
-- `cp`: 파일 복사
-- `mv`: 파일 이동 및 이름 변경
-- `rm`: 파일 삭제
-
----
-
-## 6. Linux 파일 권한 실습
-
-### 실습 목적
-
-파일과 디렉토리의 접근 권한을 확인하고 변경한다.
-
-### 파일 권한 변경
-
-```bash
-touch sample.sh
-ls -l sample.sh
-chmod 755 sample.sh
-ls -l sample.sh
-```
-
-### 디렉토리 권한 변경
-
-```bash
-mkdir permission-test
-ls -ld permission-test
-chmod 755 permission-test
-ls -ld permission-test
-```
-
-### 결과 비교
-
-| 대상 | 변경 전 | 변경 후 |
-|---|---|---|
-| sample.sh | rw-r--r-- | rwxr-xr-x |
-| permission-test | rw-r--r-- | drwxr-xr-x |
-
-![권한 실습](screenshots/02-permissions.png)
-
-### 학습한 내용
-
-- r = 읽기(4)
-- w = 쓰기(2)
-- x = 실행(1)
-- 755 = rwxr-xr-x
-- 644 = rw-r--r--
-
----
-
-## 7. Docker 설치 및 기본 운영
-
-### Docker 상태 확인
-
-```bash
-docker --version
-docker info
-```
-
-### hello-world 실행
-
-```bash
-docker run hello-world
-```
-
-**실행 결과**
-
-# docker run hello-world
-Unable to find image 'hello-world:latest' locally
-latest: Pulling from library/hello-world
-4f55086f7dd0: Pull complete
-d5e71e642bf5: Download complete
-Digest: sha256:c567b231f65614688711a75f31518a064258a51d442117a3e771a3a8fdba78ef
-Status: Downloaded newer image for hello-world:latest
-
-Hello from Docker!
-This message shows that your installation appears to be working correctly.
-
-To generate this message, Docker took the following steps:
- 1. The Docker client contacted the Docker daemon.
- 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
-    (amd64)
- 3. The Docker daemon created a new container from that image which runs the
-    executable that produces the output you are currently reading.
- 4. The Docker daemon streamed that output to the Docker client, which sent it
-    to your terminal.
-
-To try something more ambitious, you can run an Ubuntu container with:
- $ docker run -it ubuntu bash
-
-Share images, automate workflows, and more with a free Docker ID:
- https://hub.docker.com/
-
-For more examples and ideas, visit:
- https://docs.docker.com/get-started/
-
-# docker run hello-world
-
-Hello from Docker!
-This message shows that your installation appears to be working correctly.
-
-To generate this message, Docker took the following steps:
- 1. The Docker client contacted the Docker daemon.
- 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
-    (amd64)
- 3. The Docker daemon created a new container from that image which runs the
-    executable that produces the output you are currently reading.
- 4. The Docker daemon streamed that output to the Docker client, which sent it
-    to your terminal.
-
-To try something more ambitious, you can run an Ubuntu container with:
- $ docker run -it ubuntu bash
-
-Share images, automate workflows, and more with a free Docker ID:
- https://hub.docker.com/
-
-For more examples and ideas, visit:
- https://docs.docker.com/get-started/
-
-### Ubuntu 컨테이너 실행
-
-```bash
-docker run -it ubuntu bash
-```
-# docker run -it ubuntu bash
-Unable to find image 'ubuntu:latest' locally
-latest: Pulling from library/ubuntu
-f3f25b84a7d7: Pull complete
-edafa32f5d9e: Pull complete
-21594acc2d8b: Download complete
-Digest: sha256:6a06111c3b0a8600feadb270aec771dc239bf407b25625f93f44ab00e11f4d3c
-Status: Downloaded newer image for ubuntu:latest
-
-컨테이너 내부에서 다음 명령을 실행한다.
-
-```bash
-pwd
-ls
-echo "Hello from Ubuntu"
-exit
-```
-root@3959149b871f:/# pwd
-/
-root@3959149b871f:/# ls
-bin  boot  dev  etc  home  lib  lib64  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var
-root@3959149b871f:/# echo "Hello from Ubuntu"
-Hello from Ubuntu
-root@3959149b871f:/# exit
-exit
-
-
-### Docker 운영 명령어
-
-```bash
-docker images
-docker ps
-docker ps -a
-docker logs [컨테이너명]
-docker stats --no-stream
-```
-
-# docker images
-                                                                                                                                         i Info →   U  In Use
-IMAGE                ID             DISK USAGE   CONTENT SIZE   EXTRA
-hello-world:latest   c567b231f656       25.9kB         9.49kB    U
-ubuntu:latest        6a06111c3b0a        163MB         45.9MB    U
-# docker ps
-CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
-# docker ps -a
-CONTAINER ID   IMAGE         COMMAND    CREATED              STATUS                      PORTS     NAMES
-3959149b871f   ubuntu        "bash"     About a minute ago   Exited (0) 28 seconds ago             naughty_maxwell
-7dc5da117786   hello-world   "/hello"   2 minutes ago        Exited (0) 2 minutes ago              elegant_chebyshev
-e7a129942b96   hello-world   "/hello"   2 minutes ago        Exited (0) 2 minutes ago              objective_mclaren
-# docker logs Ubuntu
-Error response from daemon: No such container: Ubuntu
-# docker run -it --name my-ubuntu ubuntu bash
-root@26084786c5e8:/# docker ps -a
-bash: docker: command not found
-root@26084786c5e8:/# docker logs my-ubuntu
-bash: docker: command not found
-root@26084786c5e8:/# exit
-exit
-# docker logs my-ubuntu
-root@26084786c5e8:/# docker ps -a
-bash: docker: command not found
-root@26084786c5e8:/# docker logs my-ubuntu
-bash: docker: command not found
-root@26084786c5e8:/# exit
-exit
-# docker logs naughty_maxwell
-root@3959149b871f:/# pwd
-/
-root@3959149b871f:/# ls
-bin  boot  dev  etc  home  lib  lib64  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var
-root@3959149b871f:/# echo "Hello from Ubuntu"
-Hello from Ubuntu
-root@3959149b871f:/# exit
-exit
-# docker stats --no-stream
-# docker images
-                                                                                                                                         i Info →   U  In Use
-IMAGE                ID             DISK USAGE   CONTENT SIZE   EXTRA
-hello-world:latest   c567b231f656       25.9kB         9.49kB    U
-ubuntu:latest        6a06111c3b0a        163MB         45.9MB    U
-# docker
-
-![Docker 실습](screenshots/03-docker_1.png)
-![Docker 실습](screenshots/03-docker_2.png)
-![Docker 실습](screenshots/03-docker_3.png)
-
-### 학습한 내용
-
-Docker 이미지는 실행환경을 구성하는 템플릿이며, 컨테이너는 이미지를 기반으로 생성되는 실행 인스턴스다.
-
----
-
-## 8. Dockerfile 커스텀 이미지 제작
-
-### 실습 목표
-
-NGINX 기반 이미지를 활용하여 직접 작성한 HTML 페이지를 제공하는 웹 서버를 구축한다.
-
-### Dockerfile
+### 4-2) 직접 작성한 웹 서버 · Dockerfile
+`app/server.c` (정적 C 웹 서버), `site/index.html`, `data/.keep`, `Dockerfile` 을 직접 작성했습니다.
+
+**선택한 방식**: 과제의 (B) 유형에 해당 — 기존 베이스(`scratch`)에 기능을 얹은 커스텀 이미지.
+> 원래는 `nginx:alpine` 을 쓰고 싶었으나 레지스트리가 차단되어, **베이스가 가장 단순한 `scratch`** 를 택하고 호스트에서 정적 빌드한 바이너리를 넣었습니다.
 
 ```dockerfile
-FROM nginx:alpine
-COPY site/ /usr/share/nginx/html/
+# 베이스: scratch (빈 이미지). Docker Hub 접근이 막힌 환경이라 호스트에서 정적 빌드한 바이너리만 담는다.
+FROM scratch
+LABEL org.opencontainers.image.title="codyssey-mini-web"
+ENV APP_ENV=dev PORT=5000
+COPY app/server /server
+COPY site/ /www/
+# /data 디렉토리를 이미지에 만들어 둔다 (scratch에는 mkdir가 없어 COPY로 생성)
+COPY data/ /data/
+EXPOSE 5000
+ENTRYPOINT ["/server"]
 ```
 
-### 커스텀 포인트
-
-- NGINX Alpine 이미지를 베이스로 사용
-- 기본 웹 콘텐츠를 자체 제작 HTML로 교체
-
-### 이미지 빌드
-
-```bash
-docker build -t codyssey-web:1.0 .
-```
-
-### 컨테이너 실행
-
-```bash
-docker run -d -p 8080:80 --name codyssey-web codyssey-web:1.0
-```
-
-### 실행 확인
-
-```bash
-docker ps
-docker logs codyssey-web
-```
-
-**실행 결과**
-
-```
-glocaledu@GNIA-C201-C02:~/codyssey-workstation$ docker build -t codyssey-web:1.0 .
-[+] Building 1.1s (7/7) FINISHED                        docker:default
- => [internal] load build definition from Dockerfile              0.0s
- => => transferring dockerfile: 89B                               0.0s
- => [internal] load metadata for docker.io/library/nginx:alpine   0.0s
- => [internal] load .dockerignore                                 0.0s
- => => transferring context: 2B                                   0.0s
- => [internal] load build context                                 0.1s
- => => transferring context: 275B                                 0.0s
- => [1/2] FROM docker.io/library/nginx:alpine@sha256:785835ea65d  0.6s
- => => resolve docker.io/library/nginx:alpine@sha256:785835ea65d  0.0s
- => => extracting sha256:7b229517ed222597277036d94892173207d01a7  0.1s
- => => extracting sha256:12b85cff06fd7d383d36a9c96503fe049c9d4bf  0.1s
- => => extracting sha256:657023555a2a19dc6036468198bb350d2c7feaa  0.0s
- => => extracting sha256:7cc330898115ce55acccb0cc1e7dd091df4410c  0.0s
- => => extracting sha256:26185d08a3ec318dd85a6c9f2172e714ec13cec  0.0s
- => => extracting sha256:2ec5fb117ffa9a78b15fb6a78745ffc569c8da0  0.0s
- => => extracting sha256:9b0f7dfe35b2711a17f60dadd6d4035dc0cdee1  0.0s
- => => extracting sha256:b9b388a21ecfde6ac80505f23f527146a2129df  0.2s
- => [2/2] COPY site/ /usr/share/nginx/html/                       0.1s
- => exporting to image                                            0.2s
- => => exporting layers                                           0.1s
- => => exporting manifest sha256:c3fdd903217af2957b403a15fed2ad0  0.0s
- => => exporting config sha256:0b39a82d6b1a699640f3fc9e54c448492  0.0s
- => => exporting attestation manifest sha256:980483c43b455e3f2ca  0.0s
- => => exporting manifest list sha256:c1e4d3dedb567542a9e3431b18  0.0s
- => => naming to docker.io/library/codyssey-web:1.0               0.0s
- => => unpacking to docker.io/library/codyssey-web:1.0            0.0s
-glocaledu@GNIA-C201-C02:~/codyssey-workstation$ docker run -d -p 8080:80 --name codyssey-web codyssey-web:1.0
-96164662be8eda667b836b8fed44f2563b5724f533e31fd5da0cd6690e46292e
-glocaledu@GNIA-C201-C02:~/codyssey-workstation$ docker ps
-CONTAINER ID   IMAGE              COMMAND                  CREATED       STATUS       PORTS                                     NAMES
-96164662be8e   codyssey-web:1.0   "/docker-entrypoint.…"   2 hours ago   Up 2 hours   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp   codyssey-web
-glocaledu@GNIA-C201-C02:~/codyssey-workstation$ docker logs codyssey-web
-/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
-/docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
-/docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
-10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
-10-listen-on-ipv6-by-default.sh: info: Enabled listen on IPv6 in /etc/nginx/conf.d/default.conf
-/docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
-/docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
-/docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
-/docker-entrypoint.sh: Configuration complete; ready for start up
-2026/11/05 08:43:10 [notice] 1#1: using the "epoll" event method
-2026/11/05 08:43:10 [notice] 1#1: nginx/1.31.8
-2026/11/05 08:43:10 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0) 
-2026/11/05 08:43:10 [notice] 1#1: OS: Linux 6.18.54.1-microsoft-standard-WSL2
-2026/11/05 08:43:10 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
-2026/11/05 08:43:10 [notice] 1#1: start worker processes
-2026/11/05 08:43:10 [notice] 1#1: start worker process 30
-2026/11/05 08:43:10 [notice] 1#1: start worker process 31
-2026/11/05 08:43:10 [notice] 1#1: start worker process 32
-2026/11/05 08:43:10 [notice] 1#1: start worker process 33
-2026/11/05 08:43:10 [notice] 1#1: start worker process 34
-2026/11/05 08:43:10 [notice] 1#1: start worker process 35
-2026/11/05 08:43:10 [notice] 1#1: start worker process 36
-2026/11/05 08:43:10 [notice] 1#1: start worker process 37
-2026/11/05 08:43:10 [notice] 1#1: start worker process 38
-2026/11/05 08:43:10 [notice] 1#1: start worker process 39
-2026/11/05 08:43:10 [notice] 1#1: start worker process 40
-2026/11/05 08:43:10 [notice] 1#1: start worker process 41
-2026/11/05 08:43:10 [notice] 1#1: start worker process 42
-2026/11/05 08:43:10 [notice] 1#1: start worker process 43
-2026/11/05 08:43:10 [notice] 1#1: start worker process 44
-2026/11/05 08:43:10 [notice] 1#1: start worker process 45
-2026/11/05 08:43:10 [notice] 1#1: start worker process 46
-2026/11/05 08:43:10 [notice] 1#1: start worker process 47
-2026/11/05 08:43:10 [notice] 1#1: start worker process 48
-2026/11/05 08:43:10 [notice] 1#1: start worker process 49
-2026/11/05 08:43:10 [notice] 1#1: start worker process 50
-2026/11/05 08:43:10 [notice] 1#1: start worker process 51
-2026/11/05 08:43:10 [notice] 1#1: start worker process 52
-2026/11/05 08:43:10 [notice] 1#1: start worker process 53
-172.17.0.1 - - [05/Nov/2026:08:43:19 +0000] "GET / HTTP/1.1" 200 203 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36" "-"
-172.17.0.1 - - [05/Nov/2026:08:43:19 +0000] "GET /favicon.ico HTTP/1.1" 404 555 "http://localhost:8080/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36" "-"
-2026/11/05 08:43:19 [error] 30#30: *1 open() "/usr/share/nginx/html/favicon.ico" failed (2: No such file or directory), client: 172.17.0.1, server: localhost, request: "GET /favicon.ico HTTP/1.1", host: "localhost:8080", referrer: "http://localhost:8080/"
----
-
-## 9. 포트 매핑 검증
-
-### 실습 목적
-
-호스트 PC의 포트와 컨테이너 내부 포트를 연결하여 웹 서버에 접속한다.
-
-### 실행 명령
-
-```bash
-docker run -d -p 8081:80 --name codyssey-web2 codyssey-web:1.0
-```
-
-### 접속 확인
-
-- http://localhost:8080
-- http://localhost:8081
-
-두 포트에서 웹페이지가 표시되는지 확인한다.
-
-![웹 서버 접속](screenshots/04-web-browser.png)
-
-### 학습한 내용
-
-`-p 8080:80`은 호스트 PC의 8080번 포트를 컨테이너의 80번 포트에 연결한다.
-
----
-
-## 10. Bind Mount 실습
-
-### 실습 목적
-
-호스트 PC의 HTML 파일을 수정했을 때 컨테이너 웹페이지에 변경 내용이 반영되는지 확인한다.
-
-### 실행 명령
-
-```bash
-docker run -d -p 8082:80 \
-  --name codyssey-bind \
-  -v "$(pwd)/site:/usr/share/nginx/html:ro" \
-  nginx:alpine
-```
-
-### 검증 방법
-
-1. localhost:8082에서 최초 페이지 확인
-2. 호스트의 site/index.html 수정
-3. 브라우저 새로고침
-4. 수정 사항이 반영되는지 확인
-
-**실행 전후 비교**
-
-[실제 변경 전후 내용 작성]
-1. 최초 페이지
-#1 Hello Codyssey!
-My first Docker web server!
-
-2. index.html 수정
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <title>Codyssey Mission 1</title>
-</head>
-<body>
-    <h1>#2 Hello Codyssey!</h1>
-    <p>I am learning how to use Docker!</p>
-</body>
-</html>
-
-3. 브라우저 새로고침
-#2 Hello Codyssey!
-I am learning how to use Docker!
-   
-![Bind Mount](screenshots/05-bind-mount_1.png)
-![Bind Mount](screenshots/05-bind-mount_2.png)
-![Bind Mount](screenshots/05-bind-mount_3.png)
-
----
-
-## 11. Docker Volume 영속성 검증
-
-### 실습 목적
-
-컨테이너 삭제 후에도 데이터가 유지되는지 확인한다.
-
-① Volume 생성 및 데이터 저장
-
-docker volume create codyssey-data
-
-docker run -d --name volume-test \
-  -v codyssey-data:/data \
-  ubuntu sleep infinity
-
-docker exec volume-test \
-  sh -c 'echo "Codyssey Data" > /data/test.txt'
-
-② 컨테이너 삭제 전 데이터 확인
-
-docker exec volume-test cat /data/test.txt
-
-출력 결과:
-
-Codyssey Data
-
-③ 기존 컨테이너 삭제
-
-docker rm -f volume-test
-
-출력 결과:
-
-volume-test
-
-④ 컨테이너 삭제 후 데이터 확인
-
-docker run --rm \
-  -v codyssey-data:/data \
-  ubuntu cat /data/test.txt
-
-출력 결과:
-
-Codyssey Data
-
-⑤ 실습 결과 및 학습 내용
-
-기존 컨테이너를 삭제한 후 새로운 컨테이너에 동일한 Docker Volume을 연결하여 데이터 유지 여부를 검증하였다.
-
-Docker Volume은 컨테이너와 별도로 관리되므로 컨테이너를 삭제하더라도 Volume을 삭제하지 않으면 저장된 데이터가 유지된다.
-
-**실제 결과**
-
-![Volume 검증](screenshots/06-volume.png)
-
-### 학습한 내용
-
-Docker Volume은 컨테이너와 독립적으로 관리되므로 컨테이너를 삭제해도 볼륨을 삭제하지 않으면 데이터가 유지된다.
-
----
-
-## 12. Git 및 GitHub 연동
-
-### Git 설정 확인
-
-```bash
-git config --list
-```
-사용자 정보와 기본 브랜치 설정 상태를 확인한다.
-
-### Git 저장소 생성 및 커밋
-
-```bash
-git init
-git add .
-git commit -m "Complete Codyssey Mission 1"
-git status
-```
-
-### 원격 저장소 확인
-
-```bash
-git remote -v
-```
-
-GitHub 저장소를 연결하고 push한 결과를 기록한다.
-
-![GitHub 저장소 상태 확인](screenshots/07-git-status.png)
-
-**GitHub Repository**
-
-https://github.com/glocaledu/codyssey_1-1
-
-[본인 GitHub 저장소 URL]
-
-![GitHub 연동](screenshots/08-github-repository.png)
-
----
-
-## 13. 트러블슈팅
-
-### 문제 1. WSL2 환경에서 VS Code 실행 오류
-
-**문제 현상**
-
-WSL2 Linux 환경에서 codyssey-workstation 폴더를 생성한 후, VS Code로 프로젝트를 열기 위해 다음 명령어를 실행하였다.
-
-code .
-
-그러나 다음 오류가 발생하면서 VS Code가 실행되지 않았다.
-
-/mnt/c/Program Files/Microsoft VS Code/Code.exe: Invalid argument
-
-**원인 가설**
-1. WSL2 Linux에서 Windows에 설치된 VS Code를 실행하는 과정에서 경로 또는 연동 문제가 발생했을 가능성
-2. 관리자(root) 계정으로 실행하여 사용자별 VS Code 설정 및 실행 환경이 영향을 주었을 가능성
-
-**확인 과정**
-
-현재 디렉토리와 사용자 계정, Linux 실행 환경을 확인하였다.
-
-pwd
-//codyssey-workstation
-
-whoami
-root
-
-cat /proc/1/comm
-systemd
-
-추가로 Linux 커널 정보를 확인하였다.
-
-uname -r
-
-실행 결과
-
-6.18.54.1-microsoft-standard-WSL2
-
-이를 통해 현재 환경이 Windows의 WSL2 기반 Linux임을 확인하였다.
-
-**해결 방법**
-관리자 계정 대신 일반 사용자 glocaledu를 사용하여 개발 실습을 진행하도록 변경하였다.
-
-su - glocaledu
-
-사용자 전환 후 작업 디렉토리에 접근하였다.
-
-cd ~/codyssey-workstation
-
-일반 사용자 계정에서 개발 작업을 계속 진행할 수 있음을 확인하였다.
-
-다만 일반 사용자 환경에서도 code 명령을 찾지 못하는 문제가 추가로 발생하였다.
-
-Command 'code' not found
-
-따라서 VS Code 실행 문제는 사용자 전환만으로 해결되었다고 볼 수 없으며, Windows VS Code와 WSL2의 연결 설정을 별도로 확인해야 한다.
-
-
-**결과**
-상태: 원인 조사 및 사용자 환경 변경 완료 / VS Code 직접 실행은 추가 검증 필요
-
-**학습한 내용**
-* WSL2는 Windows에서 Linux 환경을 실행할 수 있도록 지원한다.
-* Linux의 root 계정과 일반 사용자 계정은 서로 다른 홈 디렉토리와 사용자 설정을 가진다.
-* VS Code 실행 오류는 실행 파일 경로, WSL 연동, 사용자 환경 등의 관점에서 확인해야 한다.
-* 오류 해결 여부는 추측이 아니라 명령어 재실행 결과로 검증해야 한다.
-
-
-### 문제 2. Docker 접근 권한 오류 및 커스텀 이미지 빌드 실패
-
-**문제 현상**
-
-Dockerfile을 이용하여 NGINX 기반 커스텀 이미지를 빌드하는 과정에서 오류가 발생하였다.
-
-docker build -t codyssey-web:1.0 .
-
-발생 오류
-
-ERROR: failed to build: failed to solve:
-error getting credentials - err: exit status 1
-
-이후 컨테이너 실행을 시도했으나 빌드가 완료되지 않아 실패하였다.
-
-docker run -d -p 8080:80 \
-  --name codyssey-web codyssey-web:1.0
-
-일반 사용자 glocaledu 계정으로 전환하여 Docker 상태를 확인했을 때도 다음 오류가 발생하였다.
-
-permission denied while trying to connect to
-the docker API at unix:///var/run/docker.sock
-
-**원인 가설**
-
-root 계정에서 Windows Docker Desktop 인증 프로그램을 호출하는 과정에 문제가 발생했을 가능성
-
-일반 사용자 glocaledu에게 Docker 소켓 접근 권한이 없는 문제
-
-Docker 이미지 빌드가 실패하여 실행에 필요한 이미지가 생성되지 않은 문제
-
-**확인 과정**
-
-일반 사용자로 전환한 후 Docker 상태를 확인하였다.
-
-su - glocaledu
-docker info
-
-실행 결과
-
-Client:
- Version: 29.9.2
-
-Server:
-permission denied while trying to connect to
-the docker API at unix:///var/run/docker.sock
-
-NGINX 이미지 다운로드도 시도하였다.
-
-docker pull nginx:alpine
-
-실행 결과
-
-permission denied while trying to connect to
-the docker API at unix:///var/run/docker.sock
-
-Docker CLI는 정상 설치되어 있었으나 일반 사용자에게 Docker 엔진 접근 권한이 없는 것으로 판단하였다.
-
-**해결 방법**
-
-① Docker 그룹에 사용자 추가
-
-root 계정으로 돌아간 후 glocaledu 사용자를 Docker 그룹에 추가하였다.
-
-sudo usermod -aG docker glocaledu
-
-그룹 변경 명령을 실행하였다.
-
-newgrp docker
-groups
-
-실행 결과
-
-docker root
-
-이 결과는 당시 root 세션에 Docker 그룹이 적용되었음을 의미한다.
-
-② Docker 엔진 연결 확인
-
-docker info
-
-주요 실행 결과
-
-Server:
- Containers: 4
-  Running: 0
-  Paused: 0
-  Stopped: 4
- Images: 2
- Server Version: 29.9.2
- Storage Driver: overlayfs
- Operating System: Docker Desktop
- Architecture: x86_64
- CPUs: 24
- Total Memory: 15.25GiB
-
-Docker Server 정보가 정상 출력되는 것을 확인하였다.
-
-③ 일반 사용자로 다시 접속
-
-su - glocaledu
-cd ~/codyssey-workstation
-
-④ NGINX 이미지 다운로드 성공
-
-docker pull nginx:alpine
-
-실행 결과
-
-alpine: Pulling from library/nginx
-
-Pull complete
-Pull complete
-Pull complete
-
-Status: Downloaded newer image for nginx:alpine
-docker.io/library/nginx:alpine
-
-Docker 소켓 접근 권한 문제가 해결되어 일반 사용자 계정에서도 이미지 다운로드가 정상적으로 진행되었다.
-
-⑤ 커스텀 Docker 이미지 빌드
-
-작성한 Dockerfile:
-
-FROM nginx:alpine
-COPY site/ /usr/share/nginx/html/
-
-이미지 빌드 명령어:
-
-docker build -t codyssey-web:1.0 .
-
-실행 결과
-
-[+] Building 1.1s (7/7) FINISHED
-
-[internal] load build definition from Dockerfile
-[internal] load metadata for docker.io/library/nginx:alpine
-[internal] load build context
-[1/2] FROM docker.io/library/nginx:alpine
-[2/2] COPY site/ /usr/share/nginx/html/
-exporting to image
-naming to docker.io/library/codyssey-web:1.0
-
-커스텀 이미지 codyssey-web:1.0이 정상적으로 생성되었다.
-
-⑥ Docker 컨테이너 실행
-
-docker run -d -p 8080:80 \
-  --name codyssey-web codyssey-web:1.0
-
-실행 결과
-
-96164662be8eda667b836b8fed44f2563b5724f533e31fd5da0cd6690e46292e
-
-컨테이너가 생성되어 백그라운드 실행을 시작하였다.
-
-**결과**
-
-Windows 웹 브라우저에서 다음 주소로 접속하였다.
-
-http://localhost:8080/
-
-브라우저 출력 결과
-
-Hello Codyssey!
-My first Docker web server.
-
-호스트 PC의 8080번 포트와 NGINX 컨테이너의 80번 포트가 정상적으로 연결되어 웹페이지가 표시되는 것을 확인하였다.
-
----
-
-## 14. 핵심 개념 정리
-
-| 개념 | 학습 내용 |
+| 커스텀 포인트 | 목적 |
 |---|---|
-| 절대경로 | 루트부터 시작하는 전체 경로 |
-| 상대경로 | 현재 위치를 기준으로 하는 경로 |
-| 755 권한 | 소유자 rwx, 그룹 r-x, 기타 r-x |
-| Docker Image | 컨테이너 실행을 위한 템플릿 |
-| Docker Container | 이미지로부터 생성되는 실행 인스턴스 |
-| Port Mapping | 호스트와 컨테이너의 포트 연결 |
-| Bind Mount | 호스트 파일·폴더를 컨테이너에 연결 |
-| Docker Volume | Docker가 관리하는 영속 데이터 저장공간 |
-| Git | 로컬 버전관리 도구 |
-| GitHub | 원격 저장소 및 협업 플랫폼 |
+| `FROM scratch` | OS 없이 바이너리만 담아 이미지를 1MB대로 최소화, 공격면 축소 |
+| `LABEL` | 이미지 메타데이터(이름) 표기 |
+| `ENV APP_ENV=dev PORT=5000` | 설정과 코드 분리 — 실행 시 `-e` 로 덮어쓰기 가능 |
+| `COPY app/server /server` | 직접 작성한 웹 서버 실행파일 |
+| `COPY site/ /www/` | 정적 콘텐츠 (바인드 마운트로 교체 실험 대상) |
+| `COPY data/ /data/` | 볼륨을 연결할 디렉토리 생성 (scratch는 `mkdir` 불가) |
+| `EXPOSE 5000` / `ENTRYPOINT` | 문서화용 포트 선언 / 컨테이너 시작 시 서버 실행 |
 
----
+서버 소스 핵심 동작: `GET /` → `/www/index.html` 을 **요청마다 읽어** 응답(바인드 마운트 변경이 즉시 반영됨), `GET /hits` → `/data/hits.log` 줄 수 반환(볼륨 영속성 확인용).
 
-## 15. 학습 회고
+빌드 방법(재현): 
+```bash
+gcc -O2 -static -o app/server app/server.c   # 호스트에서 정적 빌드
+docker build -t my-web:1.0 .
+```
 
-### 새롭게 배운 점
+### 4-3) 빌드 · 실행 · 포트 매핑 2회 · logs · ps
+컨테이너 내부 포트는 5000 으로 같고, 호스트 포트만 8080 / 8081 로 달리 매핑했습니다. (8081 은 `-e APP_ENV=staging` 도 주입)
 
-[직접 경험하고 이해한 내용을 작성]
+```bash
+$ docker build -t my-web:1.0 .
+#5 [2/2] COPY site/ /www/
+#5 DONE 0.0s
 
-### 가장 어려웠던 부분
+#6 exporting to image
+#6 exporting layers 0.1s done
+#6 exporting manifest sha256:1035263e1b02dcb17935497dcef3dcbdb2b1efad2c48e4dcc42093542bbb030e done
+#6 exporting config sha256:68f53c819fdd252eb3006ea2a58a8b8ef4bf7ceea26a7fdef994f25c9cfa6825 done
+#6 exporting attestation manifest sha256:842f4a7e399c53d0c0e8a7d3a588146e37dbc63e0fd9b737aac63465d54907bd done
+#6 exporting manifest list sha256:d2b014ab32c44453e02cab0807031e666df2853bcf12927f8835f322480d8564 done
+#6 naming to docker.io/library/my-web:1.0 done
+#6 unpacking to docker.io/library/my-web:1.0 0.0s done
+#6 DONE 0.2s
+$ docker images
+IMAGE        ID             DISK USAGE   CONTENT SIZE   EXTRA
+my-web:1.0   d2b014ab32c4       1.22MB          372kB        
+$ docker run -d -p 8080:5000 --name my-web-8080 my-web:1.0
+ba4f7b306358d7fc2fd253efe27881af60790db6f3614c09458e7fdb0dffa755
+$ docker run -d -p 8081:5000 -e APP_ENV=staging --name my-web-8081 my-web:1.0
+907136c0c81c4e0ffe82a73c810781cf3c8ceda019985d59f9f7a75bc3a0ca47
+$ docker ps
+CONTAINER ID   IMAGE        COMMAND     CREATED         STATUS         PORTS                    NAMES
+907136c0c81c   my-web:1.0   "/server"   2 seconds ago   Up 2 seconds   0.0.0.0:8081->5000/tcp   my-web-8081
+ba4f7b306358   my-web:1.0   "/server"   2 seconds ago   Up 2 seconds   0.0.0.0:8080->5000/tcp   my-web-8080
+$ curl -i http://localhost:8080
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: 88
+Connection: close
 
-[어려웠던 개념이나 실습 내용]
+<h1>Codyssey Mission1</h1>
+<p>version: v1 (image에 구워 넣은 기본 페이지)</p>
+$ curl http://localhost:8081
+<h1>Codyssey Mission1</h1>
+<p>version: v1 (image에 구워 넣은 기본 페이지)</p>
+$ docker logs my-web-8080
+server start: port=5000 APP_ENV=dev
+request: GET / HTTP/1.1
+$ docker logs my-web-8081
+server start: port=5000 APP_ENV=staging
+request: GET / HTTP/1.1
+```
 
-### 문제를 해결하며 알게 된 점
+> 브라우저 대신 `curl -i` 로 **HTTP 200 응답과 본문**을 증거로 남겼습니다. (과제에서 curl 응답 허용)
 
-[진단과 해결 과정에서 배운 내용]
+### 4-4) 바인드 마운트 · 운영 명령(ps -a / stats / stop / exec)
+호스트의 `site/` 를 컨테이너 `/www` 에 마운트한 뒤 호스트에서 파일만 수정했습니다. **재빌드·재시작 없이** 응답이 v1 → v2 로 바뀌었고, 마운트하지 않은 컨테이너(8080)는 그대로 v1 입니다.
 
-### 앞으로 적용하고 싶은 분야
+```bash
+### 바인드 마운트
+$ docker run -d -p 8082:5000 -v "$PWD/site:/www" --name my-web-bind my-web:1.0
+39c8e7f2d3b6cd4cdeb478c11c57164803fc0db59d2ca671e435032dfff22c00
+$ curl -s http://localhost:8082   # 변경 전
+<h1>Codyssey Mission1</h1>
+<p>version: v1 (image에 구워 넣은 기본 페이지)</p>
+$ echo "<h1>Codyssey Mission1</h1><p>version: v2 (호스트에서 수정, 재빌드 없음)</p>" > site/index.html
+$ curl -s http://localhost:8082   # 변경 후
+<h1>Codyssey Mission1</h1><p>version: v2 (호스트에서 수정, 재빌드 없음)</p>
+$ curl -s http://localhost:8080   # 마운트 없는 컨테이너는 그대로
+<h1>Codyssey Mission1</h1>
+<p>version: v1 (image에 구워 넣은 기본 페이지)</p>
 
-[향후 개발 프로젝트에 활용할 방법]
+### 운영 명령
+$ docker ps -a
+CONTAINER ID   IMAGE        COMMAND     CREATED          STATUS          PORTS                    NAMES
+e50b96201d55   my-web:1.0   "/server"   1 second ago     Up 1 second     0.0.0.0:8085->5000/tcp   novol
+1cd6cd457e05   my-web:1.0   "/server"   3 seconds ago    Up 3 seconds    0.0.0.0:8084->5000/tcp   vol-test2
+39c8e7f2d3b6   my-web:1.0   "/server"   6 seconds ago    Up 6 seconds    0.0.0.0:8082->5000/tcp   my-web-bind
+907136c0c81c   my-web:1.0   "/server"   19 seconds ago   Up 19 seconds   0.0.0.0:8081->5000/tcp   my-web-8081
+ba4f7b306358   my-web:1.0   "/server"   19 seconds ago   Up 19 seconds   0.0.0.0:8080->5000/tcp   my-web-8080
+$ docker stats --no-stream
+CONTAINER ID   NAME          CPU %     MEM USAGE / LIMIT   MEM %     NET I/O           BLOCK I/O   PIDS
+e50b96201d55   novol         0.00%     444KiB / 7.835GiB   0.01%     527B / 662B       0B / 0B     1
+1cd6cd457e05   vol-test2     0.00%     304KiB / 7.835GiB   0.00%     821B / 662B       0B / 0B     1
+39c8e7f2d3b6   my-web-bind   0.00%     304KiB / 7.835GiB   0.00%     1.63kB / 1.39kB   0B / 0B     1
+907136c0c81c   my-web-8081   0.00%     304KiB / 7.835GiB   0.00%     1.45kB / 800B     0B / 0B     1
+ba4f7b306358   my-web-8080   0.00%     656KiB / 7.835GiB   0.01%     1.97kB / 1.39kB   0B / 0B     1
+$ docker stop my-web-8081 && docker ps -a --filter name=my-web-8081
+CONTAINER ID   IMAGE        COMMAND     CREATED          STATUS                                PORTS     NAMES
+907136c0c81c   my-web:1.0   "/server"   32 seconds ago   Exited (137) Less than a second ago             my-web-8081
+$ docker exec -it my-web-8080 sh
+OCI runtime exec failed: exec failed: unable to start container process: exec: "sh": executable file not found in $PATH
+```
 
----
+### 4-5) 볼륨 영속성 검증 (대조군 포함)
+- **볼륨 없음**: 요청 4회 기록 후 컨테이너를 지우고 다시 만들자 `hits=4 → hits=1` (데이터 유실)
+- **볼륨 `mydata` 연결**: 컨테이너를 지우고 새 컨테이너에 같은 볼륨을 연결하자 `hits=4 → hits=5` (데이터 유지)
 
-## 16. 최종 검증
+```bash
+$ docker build -t my-web:1.0 .
+#6 DONE 0.0s
+#7 naming to docker.io/library/my-web:1.0 done
+#7 DONE 0.1s
 
-- [ ] 모든 필수 기능 실행 완료
-- [ ] README에 명령어와 실제 출력 결과 기록
-- [ ] 포트 매핑 접속 스크린샷 확인
-- [ ] Bind Mount 전후 변경 증거 확인
-- [ ] Volume 데이터 유지 검증
-- [ ] GitHub 원격 저장소 업로드 확인
-- [ ] 트러블슈팅 2건 이상 기록
-- [ ] 토큰·비밀번호 등 민감정보 노출 여부 확인
-- [ ] 다른 사람이 README를 보고 실습을 재현할 수 있는지 확인
+### [대조군] 볼륨 없이: 기록 후 컨테이너 삭제/재생성
+$ curl x3 ; curl /hits
+hits=4
+$ docker rm -f novol && docker run -d -p 8085:5000 --name novol my-web:1.0 && curl /hits
+hits=1
 
-**최종 결과:** [검증 후 작성]
+### [볼륨] 기록 후 컨테이너 삭제/재생성
+$ docker volume create mydata
+mydata
+$ docker run -d -p 8083:5000 -v mydata:/data --name vol-test my-web:1.0 ; curl x3 ; curl /hits
+hits=4
+$ docker rm -f vol-test
+vol-test
+$ docker volume ls
+DRIVER    VOLUME NAME
+local     mydata
+$ docker run -d -p 8084:5000 -v mydata:/data --name vol-test2 my-web:1.0 ; curl /hits
+hits=5
+```
+
+### 4-6) 컨테이너 실습 · attach / exec 차이 정리
+`hello-world`, `ubuntu` 는 pull 이 불가해 호스트의 `bash`, `ls`, `cat`, `sleep` 과 필요한 라이브러리만 모아 `docker import` 로 만든 **임시 이미지 `mini-linux:local`** 로 대체 실습했습니다. (진짜 ubuntu 이미지는 아님)
+
+```bash
+### hello-world/ubuntu 대체 실습: 호스트 bash/ls/echo로 만든 임시 이미지 mini-linux:local
+$ docker images
+IMAGE              ID             DISK USAGE   CONTENT SIZE   EXTRA
+mini-linux:local   4a5ef30b991b        7.4MB         2.33MB        
+my-web:1.0         39b7e1226f66       1.22MB          372kB   U    
+$ docker run --rm mini-linux:local /bin/echo "hello from container"
+docker: Error response from daemon: failed to create task for container: failed to create shim task: OCI runtime create failed: runc create failed: unable to start container process: error during container init: exec: "/bin/echo": stat /bin/echo: no such file or directory
+
+Run 'docker run --help' for more information
+$ docker run --rm mini-linux:local /bin/ls /
+bin
+dev
+etc
+lib
+lib64
+proc
+sys
+tmp
+
+### exec vs run (attach)
+$ docker run -d --name mini mini-linux:local /bin/sleep 300
+bcc2191670c0f0b014d9d6027efb34c0a42f170467e73a0ef8ee446078c38bbd
+$ docker exec mini /bin/ls /bin   # 실행 중 컨테이너에 새 프로세스로 진입
+bash
+cat
+ls
+sleep
+$ docker exec mini /bin/bash -c "echo hi > /tmp/a.txt; cat /tmp/a.txt"
+hi
+$ docker run -i --rm --name mini2 mini-linux:local /bin/bash -c "echo 메인 프로세스가 bash; ls /"   # run: 이 프로세스가 곧 컨테이너
+메인 프로세스가 bash
+bin
+dev
+etc
+lib
+lib64
+proc
+sys
+tmp
+$ docker ps -a --filter name=mini
+CONTAINER ID   IMAGE              COMMAND            CREATED        STATUS                  PORTS     NAMES
+bcc2191670c0   mini-linux:local   "/bin/sleep 300"   1 second ago   Up Less than a second             mini
+$ docker stop mini && docker ps -a --filter name=mini
+CONTAINER ID   IMAGE              COMMAND            CREATED          STATUS                                PORTS     NAMES
+bcc2191670c0   mini-linux:local   "/bin/sleep 300"   11 seconds ago   Exited (137) Less than a second ago             mini
+$ docker logs --tail 3 my-web-8080 (이미 삭제됨 -> novol 사용)
+server start: port=5000 APP_ENV=dev
+request: GET /hits HTTP/1.1
+```
+
+| 구분 | `docker run` | `docker exec` | `attach` |
+|---|---|---|---|
+| 하는 일 | 새 컨테이너 생성 + 시작 | **이미 실행 중인** 컨테이너 안에서 새 프로세스 실행 | 컨테이너의 **메인 프로세스** 입출력에 붙음 |
+| 종료 영향 | 메인 프로세스가 끝나면 컨테이너 종료 | 내 프로세스가 끝나도 컨테이너는 유지 | `Ctrl+C` 가 메인 프로세스에 전달될 수 있어 주의 |
+
+> `attach` 는 이번 환경에서 직접 실행하지 못해 개념만 정리했습니다. `scratch` 이미지에서는 `docker exec my-web sh` 가 "executable file not found" 로 실패했습니다 — 이미지 안에 셸이 아예 없기 때문입니다.
+
+## 5) 트러블슈팅
+
+### 5-1) `docker info` 가 데몬에 연결하지 못함
+- **문제**: `failed to connect to the docker API at unix:///var/run/docker.sock`
+- **원인 가설**: 클라이언트(CLI)만 있고 데몬(dockerd)이 실행되지 않음
+- **확인**: `docker info` 에서 Client 항목만 출력, Server 항목 에러 → `which dockerd` 로 바이너리 존재 확인
+- **해결**: `dockerd > /tmp/dockerd.log 2>&1 &` 로 기동 후 로그의 `Daemon has completed initialization` 확인, `docker info` 정상
+
+### 5-2) 이미지 pull 이 `Forbidden`
+- **문제**: `docker pull hello-world` → `Head "https://registry-1.docker.io/...": Forbidden`
+- **원인 가설**: 이 환경은 외부 접속이 허용 목록(allowlist)으로 제한됨
+- **확인**: 다른 경로로 우회하지 않고 `docker images` 가 비어 있음을 확인
+- **대안**: ① 호스트에서 `gcc -static` 으로 만든 바이너리 + `FROM scratch` 로 커스텀 이미지 작성 ② `docker import` 로 임시 리눅스 이미지 작성. 일반 PC에서는 `docker pull hello-world` 로 그대로 수행 가능
+
+### 5-3) 대조군 볼륨 테스트에서 `hits=0` (실험 설계 오류)
+- **문제**: 볼륨 없는 컨테이너가 계속 `hits=0` → "유실"처럼 보였지만 사실은 잘못된 비교
+- **원인 가설**: `scratch` 이미지에는 `/data` 디렉토리가 없어 기록 자체가 실패
+- **확인**: 볼륨 연결 시에만 기록되는 점 + 이미지 안 파일 구조 확인
+- **해결**: `COPY data/ /data/` 로 디렉토리를 이미지에 포함한 뒤 재실험 → `4 → 1`(유실) vs `4 → 5`(유지) 로 올바른 대조 확인
+
+### 5-4) 임시 이미지에서 `/bin/echo` 실행 실패
+- **문제**: `exec: "/bin/echo": stat /bin/echo: no such file or directory`
+- **원인 가설**: bash 에서 `echo` 가 셸 내장 명령이라 파일로 복사되지 않음
+- **확인**: 같은 이미지에서 `bash -c "echo ..."` 는 정상 동작
+- **해결**: 컨테이너 안에서 `echo` 는 `/bin/bash -c "echo ..."` 로 호출
+
+## 6) Git 설정
+```bash
+$ git init -b main
+Initialized empty Git repository in /home/claude/codyssey-mission1/.git/
+$ git config user.name "<교육생 이름>"
+$ git config user.email "<교육생 GitHub 이메일>"
+$ git config init.defaultBranch main
+$ git config --local --list
+core.repositoryformatversion=0
+core.filemode=true
+core.bare=false
+core.logallrefupdates=true
+user.name=<교육생 이름>
+user.email=<교육생 GitHub 이메일>
+init.defaultbranch=main
+```
+- 기본 브랜치를 `main` 으로 설정했습니다.
+- ⚠️ `user.name` / `user.email` 은 **실제 본인 정보로 바꿔야 하는 자리표시자**입니다. (이 수행 환경에서는 본인 계정 정보가 없어 임의 값을 넣지 않았습니다.)
+- **VSCode GitHub 로그인 · 원격 저장소 연동 · push 는 미수행**입니다. 실제 PC에서는 `git remote add origin <저장소 URL>` → `git push -u origin main` 순서로 진행하고, 토큰·비밀번호는 화면/로그에 노출되지 않도록 가리고 캡처합니다.
+
+## 7) 학습 정리 (과제 목표 자가 점검)
+- **포트 매핑이 필요한 이유**: 컨테이너는 격리된 네트워크 네임스페이스를 쓰므로, 내부 포트(5000)는 호스트에서 보이지 않습니다. `-p 8080:5000` 으로 호스트 포트를 컨테이너 포트에 연결해야 외부에서 접속할 수 있고, 같은 이미지를 호스트 포트만 바꿔 여러 개 띄울 수 있습니다.
+- **Docker 볼륨**: 컨테이너 쓰기 레이어는 컨테이너와 함께 사라지지만, 볼륨은 컨테이너 수명과 분리된 저장소라 삭제 후에도 데이터가 남습니다. (4-5 로그로 확인)
+- **바인드 마운트 vs 볼륨**: 바인드 마운트는 호스트의 특정 경로를 그대로 연결(개발 중 코드 즉시 반영에 유리), 볼륨은 Docker가 관리하는 영속 저장소(DB 데이터 등에 유리).
+- **이미지 vs 컨테이너**: 이미지는 읽기 전용 설계도, 컨테이너는 그 위에 쓰기 레이어를 얹어 실행한 인스턴스입니다. 같은 이미지(`my-web:1.0`)로 컨테이너 여러 개를 띄운 것으로 확인했습니다.
+- **Git vs GitHub**: Git은 내 PC의 **로컬 버전 관리 도구**, GitHub는 Git 저장소를 올려 **원격 백업·협업**(PR, 이슈 등)을 하는 플랫폼입니다.
+
+## 8) 보안 · 개인정보
+- 로그/문서에 토큰, 비밀번호, 개인키, 인증 코드는 **포함하지 않았습니다.**
+- 컨테이너 ID 해시 등은 민감정보가 아닌 로컬 식별자입니다.
+
+## 9) 저장소 구성
+```text
+.
+├── README.md          # 이 문서
+├── Dockerfile
+├── app/server.c       # 직접 작성한 웹 서버 소스 (바이너리는 .gitignore)
+├── site/index.html    # 정적 콘텐츠 (바인드 마운트 대상)
+├── data/.keep         # /data 디렉토리 생성용
+└── logs/              # 원본 수행 로그
+```
