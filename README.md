@@ -265,6 +265,11 @@ curl -i http://localhost:8080
 curl http://localhost:8081
 docker ps
 ```
+
+실행 결과
+docker build -t my-web:1.0 .
+
+```text
 $ docker build -t my-web:1.0 .
 [+] Building 6.7s (7/7) FINISHED                                                    docker:default
  => [internal] load build definition from Dockerfile                                          0.0s
@@ -303,25 +308,33 @@ $ docker build -t my-web:1.0 .
  => => unpacking to docker.io/library/my-web:1.0                                              0.0s
 ```
 
-```
+실행 결과
 $ docker run -d -p 8080:80 --name my-web-8080 my-web:1.0
+
+```text
 4317ff6167bd528f598b0f94ae8b4c83929a1b572d51353799438fefa064822d
 ```
 
-```
+실행 결과
 $ docker run -d -p 8081:80 -e APP_ENV=staging --name my-web-8081 my-web:1.0
+
+```text
 e5e2a288fa5ee418a607b760b37acdcaaf627eda3eac5bd817ab122b02bc68b4
 ```
 
-```
+실행 결과
 $ docker ps
+
+```text
 CONTAINER ID   IMAGE        COMMAND                  CREATED              STATUS                        PORTS                                     NAMES
 e5e2a288fa5e   my-web:1.0   "/docker-entrypoint.…"   18 seconds ago       Up 17 seconds (healthy)       0.0.0.0:8081->80/tcp, [::]:8081->80/tcp   my-web-8081
 4317ff6167bd   my-web:1.0   "/docker-entrypoint.…"   About a minute ago   Up About a minute (healthy)   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp   my-web-8080
 ```
 
-```
+실행 결과
 $ curl -i http://localhost:8080
+
+```text
 HTTP/1.1 200 OK
 Server: nginx/1.31.8
 Date: Mon, 09 Nov 2026 08:28:55 GMT
@@ -335,8 +348,10 @@ Accept-Ranges: bytes
 <h1>Codyssey Mission1</h1>
 ```
 
-```
+실행 결과
 $ curl -i http://localhost:8081
+
+```text
 HTTP/1.1 200 OK
 Server: nginx/1.31.8
 Date: Mon, 09 Nov 2026 08:31:15 GMT
