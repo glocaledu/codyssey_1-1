@@ -265,8 +265,6 @@ curl -i http://localhost:8080
 curl http://localhost:8081
 docker ps
 ```
-
-<여기에 위 명령의 실제 출력을 붙여 넣으세요>
 $ docker build -t my-web:1.0 .
 [+] Building 6.7s (7/7) FINISHED                                                    docker:default
  => [internal] load build definition from Dockerfile                                          0.0s
@@ -303,18 +301,26 @@ $ docker build -t my-web:1.0 .
  => => exporting manifest list sha256:2ce8aaaa5649c0019f2b8d8507b58fba7f3b6ceb8e214979eb97b5  0.0s
  => => naming to docker.io/library/my-web:1.0                                                 0.0s
  => => unpacking to docker.io/library/my-web:1.0                                              0.0s
+```
 
+```
 $ docker run -d -p 8080:80 --name my-web-8080 my-web:1.0
 4317ff6167bd528f598b0f94ae8b4c83929a1b572d51353799438fefa064822d
+```
 
+```
 $ docker run -d -p 8081:80 -e APP_ENV=staging --name my-web-8081 my-web:1.0
 e5e2a288fa5ee418a607b760b37acdcaaf627eda3eac5bd817ab122b02bc68b4
+```
 
+```
 $ docker ps
 CONTAINER ID   IMAGE        COMMAND                  CREATED              STATUS                        PORTS                                     NAMES
 e5e2a288fa5e   my-web:1.0   "/docker-entrypoint.…"   18 seconds ago       Up 17 seconds (healthy)       0.0.0.0:8081->80/tcp, [::]:8081->80/tcp   my-web-8081
 4317ff6167bd   my-web:1.0   "/docker-entrypoint.…"   About a minute ago   Up About a minute (healthy)   0.0.0.0:8080->80/tcp, [::]:8080->80/tcp   my-web-8080
+```
 
+```
 $ curl -i http://localhost:8080
 HTTP/1.1 200 OK
 Server: nginx/1.31.8
@@ -327,7 +333,9 @@ ETag: "6af18347-57"
 Accept-Ranges: bytes
 
 <h1>Codyssey Mission1</h1>
+```
 
+```
 $ curl -i http://localhost:8081
 HTTP/1.1 200 OK
 Server: nginx/1.31.8
@@ -341,6 +349,7 @@ Accept-Ranges: bytes
 
 <h1>Codyssey Mission1</h1>
 <p>version: v1 (이미지에 포함된 기본 페이지)</p>
+```
 
 ### 4-3) 빌드 · 실행 · 포트 매핑 2회 · logs · ps
 컨테이너 내부 포트는 80 으로 같고, 호스트 포트만 8080 / 8081 로 달리 매핑했습니다. (8081 은 `-e APP_ENV=staging` 도 주입)
